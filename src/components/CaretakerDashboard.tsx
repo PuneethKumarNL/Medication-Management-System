@@ -8,10 +8,15 @@ import { Calendar } from "@/components/ui/calendar";
 import { Users, Bell, Calendar as CalendarIcon, Mail, AlertTriangle, Check, Clock, Camera } from "lucide-react";
 import NotificationSettings from "./NotificationSettings";
 import { format, subDays, isToday, isBefore, startOfDay } from "date-fns";
+import { Plus, } from "lucide-react"
+import { AddMedicationDialog } from "./add-medication-dialog";
+import { MedicationList } from "./medication-list";
+
 
 const CaretakerDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
 
   // Mock data for demonstration
   const patientName = "Eleanor Thompson";
@@ -52,6 +57,71 @@ const CaretakerDashboard = () => {
   const handleViewCalendar = () => {
     setActiveTab("calendar");
   };
+
+  interface Medication {
+  id: string
+  name: string
+  dosage: string
+  frequency: string
+  takenToday: boolean
+  lastTaken?: Date
+}
+const markAsTaken = (id: string) => {
+    setMedications((prev) =>
+      prev.map((med) => (med.id === id ? { ...med, takenToday: true, lastTaken: new Date() } : med)),
+    )
+  }
+
+  const markAsNotTaken = (id: string) => {
+    setMedications((prev) =>
+      prev.map((med) => (med.id === id ? { ...med, takenToday: false, lastTaken: undefined } : med)),
+    )
+  }
+
+  const deleteMedication = (id: string) => {
+    setMedications((prev) => prev.filter((med) => med.id !== id))
+  }
+
+  
+
+  const [medications, setMedications] = useState<Medication[]>([
+    {
+      id: "1",
+      name: "Lisinopril",
+      dosage: "10mg",
+      frequency: "Once daily",
+      takenToday: true,
+      lastTaken: new Date(),
+    },
+    {
+      id: "2",
+      name: "Metformin",
+      dosage: "500mg",
+      frequency: "Twice daily",
+      takenToday: false,
+    },
+    {
+      id: "3",
+      name: "Atorvastatin",
+      dosage: "20mg",
+      frequency: "Once daily",
+      takenToday: true,
+      lastTaken: new Date(),
+    },
+  ])
+
+  const totalMedications = medications.length
+  const takenToday = medications.filter((med) => med.takenToday).length
+  const adherencePercentage = totalMedications > 0 ? Math.round((takenToday / totalMedications) * 100) : 0
+
+  const addMedication = (medication: Omit<Medication, "id" | "takenToday">) => {
+    const newMedication: Medication = {
+      ...medication,
+      id: Date.now().toString(),
+      takenToday: false,
+    }
+    setMedications((prev) => [...prev, newMedication])
+  }
 
   return (
     <div className="space-y-6">
@@ -105,6 +175,20 @@ const CaretakerDashboard = () => {
                   <CalendarIcon className="w-5 h-5 text-blue-600" />
                   Today's Status
                 </CardTitle>
+                <Button onClick={() => setIsAddDialogOpen(true)} size="sm" className="bg-blue-600 hover:bg-blue-700">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Medication
+                  </Button>
+                  <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Today's Progress</span>
+                        <span>
+                          {takenToday}/{totalMedications} medications
+                        </span>
+                      </div>
+                      <Progress value={adherencePercentage} className="h-2" />
+                      <p className="text-sm text-gray-600">{adherencePercentage}% adherence today</p>
+                    </div>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between p-3 bg-accent/50 rounded-lg">
@@ -112,8 +196,8 @@ const CaretakerDashboard = () => {
                     <h4 className="font-medium">{dailyMedication.name}</h4>
                     <p className="text-sm text-muted-foreground">{dailyMedication.time}</p>
                   </div>
-                  <Badge variant={dailyMedication.status === "pending" ? "destructive" : "secondary"}>
-                    {dailyMedication.status === "pending" ? "Pending" : "Completed"}
+                  <Badge variant={takenToday === totalMedications ? "default" : "destructive"}>
+                    {takenToday === totalMedications ? "Complete" : "Pending"}
                   </Badge>
                 </div>
               </CardContent>
@@ -152,7 +236,12 @@ const CaretakerDashboard = () => {
               </CardContent>
             </Card>
           </div>
-
+<MedicationList
+              medications={medications}
+              onMarkAsTaken={markAsTaken}
+              onMarkAsNotTaken={markAsNotTaken}
+              onDelete={deleteMedication}
+            />
           {/* Adherence Progress */}
           <Card>
             <CardHeader>
@@ -344,6 +433,7 @@ const CaretakerDashboard = () => {
           <NotificationSettings />
         </TabsContent>
       </Tabs>
+      <AddMedicationDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onAdd={addMedication} />
     </div>
   );
 };
